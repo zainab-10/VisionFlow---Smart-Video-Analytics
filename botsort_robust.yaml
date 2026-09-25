@@ -1,0 +1,17 @@
+# BoT-SORT tuned aggressively to minimise ID switches in crowded scenes.
+tracker_type: botsort
+
+track_high_thresh: 0.20    # keep more detections in first association
+track_low_thresh: 0.08
+new_track_thresh: 0.70     # HIGH: only spawn a new ID for confident, unmatched dets
+                           # (prevents flicker IDs from partial/occluded detections)
+track_buffer: 150          # ~5s at 30fps: a person can be hidden a long time and keep ID
+match_thresh: 0.85
+
+# BoT-SORT / ReID
+gmc_method: sparseOptFlow
+proximity_thresh: 0.45
+appearance_thresh: 0.20    # lower = trust appearance more when re-matching after occlusion
+with_reid: True
+model: auto
+fuse_score: True

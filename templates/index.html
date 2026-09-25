@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VisionFlow — Smart Video Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e17; --surface:#111726; --surface-2:#161e30; --line:#212c42;
+    --ink:#eaf0fb; --muted:#8698b8; --accent:#4d9fff; --accent-2:#7c5cff;
+    --good:#2fe6a0; --warn:#ffb84d; --bad:#ff5c72;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);
+       background:var(--bg);min-height:100vh;position:relative;overflow-x:hidden}
+
+  #fx{position:fixed;inset:0;z-index:0;pointer-events:none;display:block}
+  .aura{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .aura span{position:absolute;border-radius:50%;filter:blur(100px);opacity:.35}
+  .aura .a{width:44vw;height:44vw;left:-8vw;top:-10vw;
+           background:radial-gradient(circle,rgba(77,159,255,.5),transparent 65%);
+           animation:float1 16s ease-in-out infinite}
+  .aura .b{width:40vw;height:40vw;right:-6vw;top:6vw;
+           background:radial-gradient(circle,rgba(124,92,255,.45),transparent 65%);
+           animation:float2 20s ease-in-out infinite}
+  .aura .grid{position:absolute;inset:0;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:52px 52px;opacity:.14;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000,transparent 80%);
+    mask-image:radial-gradient(ellipse at 50% 30%,#000,transparent 80%)}
+  @keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(6vw,4vw)}}
+  @keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-5vw,5vw)}}
+  @media(prefers-reduced-motion:reduce){.aura span{animation:none}}
+
+  .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:48px 22px 80px}
+
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+        background:linear-gradient(135deg,var(--accent),var(--accent-2));
+        font-weight:700;font-size:1.1rem;color:#fff;box-shadow:0 6px 20px -6px var(--accent)}
+  .top .name{font-weight:700;font-size:1.05rem;letter-spacing:.02em}
+  .top .live{margin-left:auto;display:inline-flex;align-items:center;gap:7px;
+             font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted)}
+  .top .live i{width:7px;height:7px;border-radius:50%;background:var(--good);
+               box-shadow:0 0 10px var(--good);animation:blink 1.6s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;line-height:1.05;
+     letter-spacing:-.02em;margin:22px 0 12px;
+     background:linear-gradient(100deg,#fff 35%,var(--accent) 100%);
+     -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--muted);font-size:1.05rem;max-width:56ch;line-height:1.55}
+
+  .card{background:linear-gradient(180deg,var(--surface),rgba(17,23,38,.6));
+        border:1px solid var(--line);border-radius:18px;padding:24px;margin-top:26px;
+        backdrop-filter:blur(8px);box-shadow:0 24px 60px -34px #000}
+
+  .step-label{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);
+              letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:620px){.modes{grid-template-columns:1fr}}
+  .mode{position:relative;border:1px solid var(--line);border-radius:14px;padding:16px;
+        cursor:pointer;transition:.18s;background:var(--surface-2);text-align:left}
+  .mode:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .mode.sel{border-color:var(--accent);
+            box-shadow:0 0 0 1px var(--accent),0 12px 30px -16px var(--accent)}
+  .mode .ic{font-size:1.4rem;margin-bottom:8px}
+  .mode .t{font-weight:600;font-size:.98rem;margin-bottom:3px}
+  .mode .d{font-size:.82rem;color:var(--muted);line-height:1.4}
+  .mode.sel::after{content:"\2713";position:absolute;top:12px;right:14px;color:var(--accent);
+                   font-weight:700}
+
+  .drop{display:block;width:100%;border:1px solid var(--line);border-radius:14px;
+        padding:40px 22px;text-align:center;cursor:pointer;transition:.18s;
+        background:var(--surface-2);margin-top:18px}
+  .drop:hover,.drop.hot{border-color:var(--accent);
+        background:radial-gradient(circle at 50% 40%,rgba(77,159,255,.10),var(--surface-2))}
+  .drop .ic{font-size:1.7rem;margin-bottom:8px}
+  .drop b{display:block;font-size:1.04rem;margin-bottom:4px}
+  .drop small{display:block;color:var(--muted);font-size:.85rem}
+  #file{display:none}
+
+  .controls{display:flex;gap:14px;align-items:center;margin-top:18px;flex-wrap:wrap}
+  .btn{border:0;border-radius:11px;cursor:pointer;padding:13px 28px;
+       font-family:'Space Grotesk';font-size:1rem;font-weight:600;color:#061018;
+       background:linear-gradient(120deg,var(--accent),var(--accent-2));
+       box-shadow:0 10px 26px -10px var(--accent);transition:.15s}
+  .btn:hover:not(:disabled){transform:translateY(-1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+  .fname{color:var(--muted);font-size:.9rem;font-family:'JetBrains Mono',monospace}
+
+  .orient{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);
+        border-radius:10px;padding:9px 14px;font-family:'Space Grotesk';font-size:.86rem;
+        cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--accent)}
+  .chip.sel{border-color:var(--accent);color:var(--ink);
+            box-shadow:0 0 0 1px var(--accent)}
+
+  .status{margin-top:20px;display:none}
+  .status.show{display:block}
+  .status .label{display:flex;justify-content:space-between;color:var(--muted);
+                 font-family:'JetBrains Mono',monospace;font-size:.82rem}
+  .track{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:10px}
+  .track>i{display:block;height:100%;width:36%;border-radius:99px;
+           background:linear-gradient(90deg,var(--accent),var(--accent-2));
+           animation:scan 1.15s ease-in-out infinite}
+  @keyframes scan{0%{margin-left:-40%}100%{margin-left:100%}}
+  @media(prefers-reduced-motion:reduce){.track>i{animation:none;width:100%}}
+
+  .msg{margin-top:14px;padding:12px 16px;border-radius:10px;font-size:.9rem;display:none}
+  .msg.err{display:block;background:rgba(255,92,114,.12);
+           border:1px solid rgba(255,92,114,.4);color:#ffb3bd}
+
+  #result{display:none}
+  video{width:100%;border-radius:13px;background:#000;display:block;border:1px solid var(--line)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+         gap:14px;margin-top:20px}
+  .stat{background:var(--surface-2);border:1px solid var(--line);border-radius:13px;
+        padding:18px;position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+                background:linear-gradient(var(--accent),var(--accent-2))}
+  .stat .n{font-family:'JetBrains Mono',monospace;font-size:1.9rem;font-weight:700;
+           color:var(--ink);line-height:1}
+  .stat .l{font-size:.74rem;letter-spacing:.05em;color:var(--muted);margin-top:6px;
+           text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+  .dl{display:inline-flex;gap:8px;margin-top:18px;color:var(--accent);
+      text-decoration:none;font-size:.9rem;font-weight:600;border:1px solid var(--line);
+      border-radius:10px;padding:10px 16px;transition:.15s}
+  .dl:hover{border-color:var(--accent);background:rgba(77,159,255,.08)}
+
+  footer{margin-top:44px;text-align:center;color:#5a6884;font-size:.8rem;
+         font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="aura"><span class="a"></span><span class="b"></span><div class="grid"></div></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="logo">&#9673;</div>
+    <div class="name">VisionFlow</div>
+    <div class="live"><i></i> YOLO26 &middot; TRACKING ENGINE</div>
+  </div>
+
+  <h1>Smart Video Analytics</h1>
+  <p class="lede">Upload footage and a pretrained YOLO26 tracking model turns it into live intelligence &mdash; counting people, tallying entries and exits, and flagging zone intrusions. No training required.</p>
+
+  <section class="card">
+    <div class="step-label">01 &middot; Choose analysis mode</div>
+    <div class="modes" id="modes">
+      <div class="mode sel" data-mode="count">
+        <div class="ic">&#128101;</div>
+        <div class="t">People Counting</div>
+        <div class="d">Live count + unique visitors across the clip.</div>
+      </div>
+      <div class="mode" data-mode="line">
+        <div class="ic">&#8862;</div>
+        <div class="t">Gate Counting</div>
+        <div class="d">Counts people entering &amp; exiting a region.</div>
+      </div>
+      <div class="mode" data-mode="zone">
+        <div class="ic">&#128679;</div>
+        <div class="t">Zone Intrusion</div>
+        <div class="d">Alert when anyone enters a restricted area.</div>
+      </div>
+    </div>
+
+    <label class="drop" id="drop">
+      <div class="ic">&#127916;</div>
+      <b>Drop a video here</b>
+      <small>or click to browse &mdash; mp4, mov, avi, mkv, webm &middot; up to 500 MB</small>
+      <input type="file" id="file" accept="video/*">
+    </label>
+
+    <div class="controls">
+      <button class="btn" id="go" disabled>Run analysis</button>
+      <span class="fname" id="fname">no file selected</span>
+    </div>
+
+    <div class="status" id="status">
+      <div class="label"><span id="statusText">Uploading&hellip;</span><span>&#9679;</span></div>
+      <div class="track"><i></i></div>
+    </div>
+    <div class="msg" id="err"></div>
+  </section>
+
+  <section class="card" id="result">
+    <div class="step-label" id="resultLabel">Result</div>
+    <video id="video" controls playsinline></video>
+    <div class="stats" id="stats"></div>
+    <a class="dl" id="dl" download>&darr; Download annotated video</a>
+  </section>
+
+  <footer>VisionFlow &middot; pretrained YOLO26 + ByteTrack + Flask &middot; portfolio project</footer>
+</div>
+
+<script>
+let mode = 'count';
+const modes    = document.getElementById('modes');
+const fileInput= document.getElementById('file');
+const drop     = document.getElementById('drop');
+const goBtn    = document.getElementById('go');
+const fname    = document.getElementById('fname');
+const statusBox= document.getElementById('status');
+const statusTxt= document.getElementById('statusText');
+const errBox   = document.getElementById('err');
+const resultBox= document.getElementById('result');
+const resultLbl= document.getElementById('resultLabel');
+const video    = document.getElementById('video');
+const statsBox = document.getElementById('stats');
+const dlLink   = document.getElementById('dl');
+let chosen = null;
+
+modes.addEventListener('click', e => {
+  const m = e.target.closest('.mode');
+  if(!m) return;
+  [...modes.children].forEach(c => c.classList.remove('sel'));
+  m.classList.add('sel');
+  mode = m.dataset.mode;
+});
+
+function pick(f){
+  if(!f) return;
+  chosen = f; fname.textContent = f.name; goBtn.disabled = false;
+  errBox.className = 'msg'; resultBox.style.display = 'none';
+}
+fileInput.addEventListener('change', e => pick(e.target.files[0]));
+['dragover','dragenter'].forEach(ev =>
+  drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('hot');}));
+['dragleave','drop'].forEach(ev =>
+  drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('hot');}));
+drop.addEventListener('drop', e => pick(e.dataTransfer.files[0]));
+
+goBtn.addEventListener('click', async () => {
+  if(!chosen) return;
+  goBtn.disabled = true; errBox.className = 'msg';
+  statusBox.classList.add('show'); statusTxt.textContent = 'Uploading\u2026';
+
+  const fd = new FormData();
+  fd.append('media', chosen);
+  fd.append('mode', mode);
+  let job;
+  try{
+    const r = await fetch('/upload', {method:'POST', body:fd});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Upload failed');
+    job = d.job_id;
+  }catch(e){ return fail(e.message); }
+
+  statusTxt.textContent = 'Tracking & analysing frames\u2026';
+  poll(job);
+});
+
+function poll(job){
+  const t = setInterval(async () => {
+    try{
+      const r = await fetch('/status/' + job);
+      const d = await r.json();
+      if(d.status === 'done'){ clearInterval(t); show(d); }
+      else if(d.status === 'error'){ clearInterval(t); fail(d.error || 'Processing failed'); }
+    }catch(e){ clearInterval(t); fail('Lost connection to the server.'); }
+  }, 1500);
+}
+
+const LABELS = {
+  unique_people:'Unique people', peak_in_frame:'Peak in frame',
+  entered:'Entered gate', exited:'Exited gate', passed_through:'Passed through',
+  max_intruders:'Peak intruders', total_breached:'Total breached'
+};
+const MODE_TITLE = {count:'People counting', line:'Gate counting', zone:'Zone intrusion'};
+
+function show(d){
+  statusBox.classList.remove('show'); goBtn.disabled = false;
+  video.src = d.video_url; dlLink.href = d.video_url;
+  resultLbl.textContent = 'Result \u00b7 ' + (MODE_TITLE[d.mode] || '');
+  statsBox.innerHTML = '';
+  const s = d.stats || {};
+  for(const k in s){ addStat(s[k], LABELS[k] || k); }
+  resultBox.style.display = 'block';
+  video.load();
+  resultBox.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function addStat(value, label){
+  const el = document.createElement('div');
+  el.className = 'stat';
+  el.innerHTML = '<div class="n">0</div><div class="l">'+label+'</div>';
+  statsBox.appendChild(el);
+  const target = Number(value) || 0;
+  const nEl = el.querySelector('.n');
+  const dur = 700; const t0 = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - t0)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    nEl.textContent = Math.round(target * eased);
+    if(p < 1) requestAnimationFrame(tick);
+    else nEl.textContent = target;
+  }
+  requestAnimationFrame(tick);
+}
+
+function fail(msg){
+  statusBox.classList.remove('show'); goBtn.disabled = false;
+  errBox.textContent = msg; errBox.className = 'msg err';
+}
+
+/* ---- Animated "detection feed" backdrop (pure canvas, no video file) ---- */
+(function(){
+  const c = document.getElementById('fx');
+  const ctx = c.getContext('2d');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, boxes = [];
+  const ACCENT = 'rgba(77,159,255,';
+  const PURPLE = 'rgba(124,92,255,';
+
+  function resize(){
+    W = c.width = window.innerWidth;
+    H = c.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize); resize();
+
+  function makeBox(id){
+    const w = 40 + Math.random()*70, h = w*1.4;
+    return {
+      id, w, h,
+      x: Math.random()*W, y: Math.random()*H,
+      vx: (Math.random()-.5)*0.5, vy: (Math.random()-.5)*0.5,
+      hue: Math.random() < .5 ? ACCENT : PURPLE,
+      trail: []
+    };
+  }
+  for(let i=0;i<9;i++) boxes.push(makeBox(1000+Math.floor(Math.random()*9000)));
+
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    for(const b of boxes){
+      b.x += b.vx; b.y += b.vy;
+      // gentle wander
+      b.vx += (Math.random()-.5)*0.02; b.vy += (Math.random()-.5)*0.02;
+      b.vx = Math.max(-0.7, Math.min(0.7, b.vx));
+      b.vy = Math.max(-0.7, Math.min(0.7, b.vy));
+      if(b.x < -b.w) b.x = W; if(b.x > W) b.x = -b.w;
+      if(b.y < -b.h) b.y = H; if(b.y > H) b.y = -b.h;
+
+      // trail of centers
+      b.trail.push([b.x + b.w/2, b.y + b.h/2]);
+      if(b.trail.length > 18) b.trail.shift();
+
+      // draw trail
+      ctx.beginPath();
+      for(let i=0;i<b.trail.length;i++){
+        const [tx,ty] = b.trail[i];
+        if(i===0) ctx.moveTo(tx,ty); else ctx.lineTo(tx,ty);
+      }
+      ctx.strokeStyle = b.hue + '0.10)';
+      ctx.lineWidth = 1.5; ctx.stroke();
+
+      // draw detection box with corner brackets
+      const x=b.x, y=b.y, w=b.w, h=b.h, L=Math.min(w,h)*0.28;
+      ctx.strokeStyle = b.hue + '0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x, y, w, h);
+      // bright corners
+      ctx.strokeStyle = b.hue + '0.55)';
+      ctx.lineWidth = 2;
+      corner(x,y, L,0, 0,L);
+      corner(x+w,y, -L,0, 0,L);
+      corner(x,y+h, L,0, 0,-L);
+      corner(x+w,y+h, -L,0, 0,-L);
+
+      // id label
+      ctx.fillStyle = b.hue + '0.5)';
+      ctx.font = '11px "JetBrains Mono", monospace';
+      ctx.fillText('ID ' + b.id, x, y - 6);
+      // center dot
+      ctx.fillStyle = b.hue + '0.8)';
+      ctx.beginPath(); ctx.arc(x+w/2, y+h/2, 2, 0, Math.PI*2); ctx.fill();
+    }
+    if(!reduce) requestAnimationFrame(frame);
+  }
+  function corner(px,py, ax,ay, bx,by){
+    ctx.beginPath();
+    ctx.moveTo(px+ax, py+ay); ctx.lineTo(px, py); ctx.lineTo(px+bx, py+by);
+    ctx.stroke();
+  }
+  if(reduce){ frame(); } else { frame(); }
+})();
+</script>
+</body>
+</html>
